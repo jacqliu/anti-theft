@@ -18,6 +18,13 @@
   #include <SoftwareSerial.h>
 #endif
 
+#include "Adafruit_BLE.h"
+#include "Adafruit_BluefruitLE_SPI.h"
+#include "Adafruit_BluefruitLE_UART.h"
+
+#include "BluefruitConfig.h"
+
+// servo
 #include <Servo.h>
 
 Servo myservo;  // create servo object to control a servo
@@ -25,12 +32,7 @@ Servo myservo;  // create servo object to control a servo
 
 int pos = 171;    // variable to store the servo position
 
-#include "Adafruit_BLE.h"
-#include "Adafruit_BluefruitLE_SPI.h"
-#include "Adafruit_BluefruitLE_UART.h"
-
-#include "BluefruitConfig.h"
-
+// song params
 #define NOTE_B0  31
 #define NOTE_C1  33
 #define NOTE_CS1 35
@@ -291,13 +293,16 @@ void error(const __FlashStringHelper*err) {
 /**************************************************************************/
 void setup(void)
 {
+  // init servo
   myservo.attach(6);  // attaches the servo on pin 1 to the servo object
   myservo.write(pos);
   delay(50);
 
+  // init buzzer
   pinMode(5, OUTPUT); // buzzer
   pinMode(13, OUTPUT);//led indicator when singing a note
-  
+
+  // init bluetooth
   while (!Serial);  // required for Flora & Micro
   delay(500);
 
@@ -331,7 +336,6 @@ void setup(void)
   ble.info();
 
   Serial.println(F("Please use Adafruit Bluefruit LE app to connect in UART mode"));
-  Serial.println(F("Then Enter characters to send to Bluefruit"));
   Serial.println();
 
   ble.verbose(false);  // debug info is a little annoying after this point!
@@ -360,7 +364,8 @@ void setup(void)
 void loop(void)
 { 
   digitalWrite(5, LOW);
-  
+
+  // if bluetooth has been disconnected and connects again, rotate servo in reverse direction to relatch
   if (pos == 9) {
    for (pos = 10; pos <= 170; pos += 1) { // goes from 0 degrees to 180 degrees
       // in steps of 1 degree
@@ -371,85 +376,25 @@ void loop(void)
 
 
   while(! ble.isConnected()) {
-    
+    // if disconnected, rotate servo to release latch
     if (pos == 171) {
       Serial.println("Disconnected");
       for (pos = 170; pos >= 10; pos -= 1) { // goes from 180 degrees to 0 degrees
         myservo.write(pos);              // tell servo to go to position in variable 'pos'
         delay(15);                       // waits 15ms for the servo to reach the position
       }
+      // sing mario song
       sing(1);
       
       delay(500);
     }
  }
 
-//  // Check for user input
-//  char inputs[BUFSIZE+1];
-//
-//  if ( getUserInput(inputs, BUFSIZE) )
-//  {
-//    // Send characters to Bluefruit
-//    Serial.print("[Send] ");
-//    Serial.println(inputs);
-//
-//    ble.print("AT+BLEUARTTX=");
-//    ble.println(inputs);
-//
-//    // check response stastus
-//    if (! ble.waitForOK() ) {
-//      Serial.println(F("Failed to send?"));
-//    }
-//  }
-//
-//
-//  // Check for incoming characters from Bluefruit
-//  ble.println("AT+BLEUARTRX");
-//  ble.readline();
-//  if (strcmp(ble.buffer, "OK") == 0) {
-//    // no data
-//    return;
-//  }
-//  // Some data was found, its in the buffer
-//  Serial.print(F("[Recv] ")); Serial.println(ble.buffer);
-//  ble.waitForOK();
-//
-//  Serial.print(inputs);
-//  if (inputs == "hello") {
-//    for (pos = 10; pos <= 100; pos += 1) { // goes from 0 degrees to 180 degrees
-//      // in steps of 1 degree
-//      myservo.write(pos);              // tell servo to go to position in variable 'pos
-//      delay(15);                       // waits 15ms for the servo to reach the position
-//    }
-//  }
 }
 
-/**************************************************************************/
-/*!
-    @brief  Checks for user input (via the Serial Monitor)
-*/
-/**************************************************************************/
-bool getUserInput(char buffer[], uint8_t maxSize)
-{
-  // timeout in 100 milliseconds
-  TimeoutTimer timeout(100);
 
-  memset(buffer, 0, maxSize);
-  while( (!Serial.available()) && !timeout.expired() ) { delay(1); }
 
-  if ( timeout.expired() ) return false;
-
-  delay(2);
-  uint8_t count=0;
-  do
-  {
-    count += Serial.readBytes(buffer+count, maxSize);
-    delay(2);
-  } while( (count < maxSize) && (Serial.available()) );
-
-  return true;
-}
-
+// makes buzzer sing songs
 
 int song = 0;
  
